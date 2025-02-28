@@ -26,9 +26,8 @@ SOFTWARE.
 #include "TMC5160.h"
 
 TMC5160::TMC5160(uint32_t fclk)
-: _fclk(fclk)
+	: _fclk(fclk)
 {
-
 }
 
 TMC5160::~TMC5160()
@@ -36,16 +35,15 @@ TMC5160::~TMC5160()
 	;
 }
 
-
-bool TMC5160::begin(const PowerStageParameters &powerParams, const MotorParameters &motorParams, MotorDirection stepperDirection )
+bool TMC5160::begin(const PowerStageParameters &powerParams, const MotorParameters &motorParams, MotorDirection stepperDirection)
 {
 	/* Clear the reset and charge pump undervoltage flags */
-	TMC5160_Reg::GSTAT_Register gstat = { 0 };
+	TMC5160_Reg::GSTAT_Register gstat = {0};
 	gstat.reset = true;
 	gstat.uv_cp = true;
 	writeRegister(TMC5160_Reg::GSTAT, gstat.value);
 
-	TMC5160_Reg::DRV_CONF_Register drvConf = { 0 };
+	TMC5160_Reg::DRV_CONF_Register drvConf = {0};
 	drvConf.drvstrength = constrain(powerParams.drvStrength, 0, 3);
 	drvConf.bbmtime = constrain(powerParams.bbmTime, 0, 24);
 	drvConf.bbmclks = constrain(powerParams.bbmClks, 0, 15);
@@ -54,7 +52,7 @@ bool TMC5160::begin(const PowerStageParameters &powerParams, const MotorParamete
 	writeRegister(TMC5160_Reg::GLOBAL_SCALER, constrain(motorParams.globalScaler, 32, 256));
 
 	// set initial currents and delay
-	TMC5160_Reg::IHOLD_IRUN_Register iholdrun = { 0 };
+	TMC5160_Reg::IHOLD_IRUN_Register iholdrun = {0};
 	iholdrun.ihold = constrain(motorParams.ihold, 0, 31);
 	iholdrun.irun = constrain(motorParams.irun, 0, 31);
 	iholdrun.iholddelay = 7;
@@ -63,9 +61,9 @@ bool TMC5160::begin(const PowerStageParameters &powerParams, const MotorParamete
 	// TODO set short detection / overcurrent protection levels
 
 	// Set initial PWM values
-	TMC5160_Reg::PWMCONF_Register pwmconf = { 0 };
-	pwmconf.value = 0xC40C001E; //Reset default
-	pwmconf.pwm_autoscale = false; //Temp to set OFS and GRAD initial values
+	TMC5160_Reg::PWMCONF_Register pwmconf = {0};
+	pwmconf.value = 0xC40C001E;	   // Reset default
+	pwmconf.pwm_autoscale = false; // Temp to set OFS and GRAD initial values
 	if (_fclk > DEFAULT_F_CLK)
 		pwmconf.pwm_freq = 0;
 	else
@@ -89,15 +87,15 @@ bool TMC5160::begin(const PowerStageParameters &powerParams, const MotorParamete
 	// use position mode
 	setRampMode(POSITIONING_MODE);
 
-	TMC5160_Reg::GCONF_Register gconf = { 0 };
-	gconf.en_pwm_mode = true; //Enable stealthChop PWM mode
+	TMC5160_Reg::GCONF_Register gconf = {0};
+	gconf.en_pwm_mode = true; // Enable stealthChop PWM mode
 	gconf.shaft = stepperDirection;
 	writeRegister(TMC5160_Reg::GCONF, gconf.value);
 
-	//Set default start, stop, threshold speeds.
-	setRampSpeeds(0, 0.1, 0); //Start, stop, threshold speeds 
+	// Set default start, stop, threshold speeds.
+	setRampSpeeds(0, 0.1, 0); // Start, stop, threshold speeds
 
-	//Set default D1 (must not be = 0 in positioning mode even with V1=0)
+	// Set default D1 (must not be = 0 in positioning mode even with V1=0)
 	writeRegister(TMC5160_Reg::D_1, 100);
 
 	return false;
@@ -118,16 +116,16 @@ void TMC5160::setRampMode(TMC5160::RampMode mode)
 {
 	switch (mode)
 	{
-		case POSITIONING_MODE:
+	case POSITIONING_MODE:
 		writeRegister(TMC5160_Reg::RAMPMODE, TMC5160_Reg::POSITIONING_MODE);
 		break;
 
-		case VELOCITY_MODE:
+	case VELOCITY_MODE:
 		setMaxSpeed(0); // There is no way to know if we should move in the positive or negative direction => set speed to 0.
 		writeRegister(TMC5160_Reg::RAMPMODE, TMC5160_Reg::VELOCITY_MODE_POS);
 		break;
 
-		case HOLD_MODE:
+	case HOLD_MODE:
 		writeRegister(TMC5160_Reg::RAMPMODE, TMC5160_Reg::HOLD_MODE);
 		break;
 	}
@@ -138,59 +136,37 @@ void TMC5160::setRampMode(TMC5160::RampMode mode)
 float TMC5160::getCurrentPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::XACTUAL);
-
-	if ((uint32_t)(uStepPos) == 0xFFFFFFFF)
-		return NAN;
-	else
-		return (float)uStepPos / (float)_uStepCount;
+	return (float)uStepPos / (float)_uStepCount;
 }
 
 float TMC5160::getEncoderPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::X_ENC);
-
-	if ((uint32_t)(uStepPos) == 0xFFFFFFFF)
-		return NAN;
-	else
-		return (float)uStepPos / (float)_uStepCount;
+	return (float)uStepPos / (float)_uStepCount;
 }
 
 float TMC5160::getLatchedPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::XLATCH);
 
-	if ((uint32_t)(uStepPos) == 0xFFFFFFFF)
-		return NAN;
-	else
-		return (float)uStepPos / (float)_uStepCount;
+	return (float)uStepPos / (float)_uStepCount;
 }
 
 float TMC5160::getLatchedEncoderPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::ENC_LATCH);
-
-	if ((uint32_t)(uStepPos) == 0xFFFFFFFF)
-		return NAN;
-	else
-		return (float)uStepPos / (float)_uStepCount;
+	return (float)uStepPos / (float)_uStepCount;
 }
 
 float TMC5160::getTargetPosition()
 {
 	int32_t uStepPos = readRegister(TMC5160_Reg::XTARGET);
-
-	if ((uint32_t)(uStepPos) == 0xFFFFFFFF)
-		return NAN;
-	else
-		return (float)uStepPos / (float)_uStepCount;
+	return (float)uStepPos / (float)_uStepCount;
 }
 
 float TMC5160::getCurrentSpeed()
 {
 	uint32_t data = readRegister(TMC5160_Reg::VACTUAL);
-
-	if (data == 0xFFFFFFFF)
-		return NAN;
 
 	// Returned data is 24-bits, signed => convert to 32-bits, signed.
 	if (bitRead(data, 23)) // highest bit set => negative value
@@ -227,8 +203,8 @@ void TMC5160::setMaxSpeed(float speed)
 
 void TMC5160::setRampSpeeds(float startSpeed, float stopSpeed, float transitionSpeed)
 {
-	writeRegister(TMC5160_Reg::VSTART, min(0x3FFFF, speedFromHz(fabs(startSpeed)))); // VSTART : 18 bits
-	writeRegister(TMC5160_Reg::VSTOP, min(0x3FFFF, speedFromHz(fabs(stopSpeed)))); // VSTOP : 18 bits
+	writeRegister(TMC5160_Reg::VSTART, min(0x3FFFF, speedFromHz(fabs(startSpeed))));   // VSTART : 18 bits
+	writeRegister(TMC5160_Reg::VSTOP, min(0x3FFFF, speedFromHz(fabs(stopSpeed))));	   // VSTOP : 18 bits
 	writeRegister(TMC5160_Reg::V_1, min(0xFFFFF, speedFromHz(fabs(transitionSpeed)))); // V1 : 20 bits
 }
 
@@ -247,26 +223,26 @@ void TMC5160::setAccelerations(float maxAccel, float maxDecel, float startAccel,
 }
 
 /**
- * 
+ *
  * @see Datasheet rev 1.15, section 6.3.2.2 "RAMP_STAT - Ramp & Reference Switch Status Register".
  * @return true if the target position has been reached, false otherwise.
  */
 bool TMC5160::isTargetPositionReached(void)
 {
 	TMC5160_Reg::RAMP_STAT_Register rampStatus = {0};
-    rampStatus.value = readRegister(TMC5160_Reg::RAMP_STAT);
+	rampStatus.value = readRegister(TMC5160_Reg::RAMP_STAT);
 	return rampStatus.position_reached ? true : false;
 }
 
 /**
- * 
+ *
  * @see Datasheet rev 1.15, section 6.3.2.2 "RAMP_STAT - Ramp & Reference Switch Status Register".
  * @return true if the target velocity has been reached, false otherwise.
  */
 bool TMC5160::isTargetVelocityReached(void)
 {
 	TMC5160_Reg::RAMP_STAT_Register rampStatus = {0};
-    rampStatus.value = readRegister(TMC5160_Reg::RAMP_STAT);
+	rampStatus.value = readRegister(TMC5160_Reg::RAMP_STAT);
 	return rampStatus.velocity_reached ? true : false;
 }
 
@@ -279,7 +255,7 @@ void TMC5160::stop()
 
 void TMC5160::disable()
 {
-	TMC5160_Reg::CHOPCONF_Register chopconf = { 0 };
+	TMC5160_Reg::CHOPCONF_Register chopconf = {0};
 	chopconf.value = _chopConf.value;
 	chopconf.toff = 0;
 	writeRegister(TMC5160_Reg::CHOPCONF, chopconf.value);
@@ -290,7 +266,7 @@ void TMC5160::enable()
 	writeRegister(TMC5160_Reg::CHOPCONF, _chopConf.value);
 }
 
-TMC5160::DriverStatus TMC5160::getDriverStatus() 
+TMC5160::DriverStatus TMC5160::getDriverStatus()
 {
 	TMC5160_Reg::GSTAT_Register gstat = {0};
 	gstat.value = readRegister(TMC5160_Reg::GSTAT);
@@ -317,20 +293,30 @@ TMC5160::DriverStatus TMC5160::getDriverStatus()
 	return OK;
 }
 
-const char* TMC5160::getDriverStatusDescription(DriverStatus st)
+const char *TMC5160::getDriverStatusDescription(DriverStatus st)
 {
 	switch (st)
 	{
-		case OK: return "OK";
-		case CP_UV: return "Charge pump undervoltage";
-		case S2VSA: return "Short to supply phase A";
-		case S2VSB: return "Short to supply phase B";
-		case S2GA: return "Short to ground phase A";
-		case S2GB: return "Short to ground phase B";
-		case OT: return "Overtemperature";
-		case OTHER_ERR: return "Other driver error";
-		case OTPW: return "Overtemperature warning";
-		default: break;
+	case OK:
+		return "OK";
+	case CP_UV:
+		return "Charge pump undervoltage";
+	case S2VSA:
+		return "Short to supply phase A";
+	case S2VSB:
+		return "Short to supply phase B";
+	case S2GA:
+		return "Short to ground phase A";
+	case S2GB:
+		return "Short to ground phase B";
+	case OT:
+		return "Overtemperature";
+	case OTHER_ERR:
+		return "Other driver error";
+	case OTPW:
+		return "Overtemperature warning";
+	default:
+		break;
 	}
 
 	return "Unknown";
@@ -345,13 +331,13 @@ void TMC5160::setModeChangeSpeeds(float pwmThrs, float coolThrs, float highThrs)
 
 bool TMC5160::setEncoderResolution(int32_t motorSteps, int32_t encResolution, bool inverted)
 {
-	//See §22.2
+	// See §22.2
 	float factor = (float)motorSteps * (float)_uStepCount / (float)encResolution;
 
-	//Check if the binary prescaler gives an exact match
+	// Check if the binary prescaler gives an exact match
 	if ((int32_t)(factor * 65536.0f) * encResolution == motorSteps * _uStepCount * 65536)
 	{
-		TMC5160_Reg::ENCMODE_Register encmode = { 0 };
+		TMC5160_Reg::ENCMODE_Register encmode = {0};
 		encmode.value = readRegister(TMC5160_Reg::ENCMODE);
 		encmode.enc_sel_decimal = false;
 		writeRegister(TMC5160_Reg::ENCMODE, encmode.value);
@@ -373,7 +359,7 @@ bool TMC5160::setEncoderResolution(int32_t motorSteps, int32_t encResolution, bo
 	}
 	else
 	{
-		TMC5160_Reg::ENCMODE_Register encmode = { 0 };
+		TMC5160_Reg::ENCMODE_Register encmode = {0};
 		encmode.value = readRegister(TMC5160_Reg::ENCMODE);
 		encmode.enc_sel_decimal = true;
 		writeRegister(TMC5160_Reg::ENCMODE, encmode.value);
@@ -385,7 +371,7 @@ bool TMC5160::setEncoderResolution(int32_t motorSteps, int32_t encResolution, bo
 			integerPart = 65535 - integerPart;
 			decimalPart = 10000 - decimalPart;
 		}
-		int32_t encConst =  integerPart * 65536 + decimalPart;
+		int32_t encConst = integerPart * 65536 + decimalPart;
 		writeRegister(TMC5160_Reg::ENC_CONST, encConst);
 
 #if 0
@@ -398,14 +384,14 @@ bool TMC5160::setEncoderResolution(int32_t motorSteps, int32_t encResolution, bo
 		Serial.println(decimalPart);
 #endif
 
-		//Check if the decimal prescaler gives an exact match. Floats have about 7 digits of precision so no worries here.
+		// Check if the decimal prescaler gives an exact match. Floats have about 7 digits of precision so no worries here.
 		return ((int32_t)(factor * 10000.0f) * encResolution == motorSteps * (int32_t)_uStepCount * 10000);
 	}
 }
 
 void TMC5160::setEncoderIndexConfiguration(TMC5160_Reg::ENCMODE_sensitivity_Values sensitivity, bool nActiveHigh, bool ignorePol, bool aActiveHigh, bool bActiveHigh)
 {
-	TMC5160_Reg::ENCMODE_Register encmode = { 0 };
+	TMC5160_Reg::ENCMODE_Register encmode = {0};
 	encmode.value = readRegister(TMC5160_Reg::ENCMODE);
 
 	encmode.sensitivity = sensitivity;
@@ -419,7 +405,7 @@ void TMC5160::setEncoderIndexConfiguration(TMC5160_Reg::ENCMODE_sensitivity_Valu
 
 void TMC5160::setEncoderLatching(bool enabled)
 {
-	TMC5160_Reg::ENCMODE_Register encmode = { 0 };
+	TMC5160_Reg::ENCMODE_Register encmode = {0};
 	encmode.value = readRegister(TMC5160_Reg::ENCMODE);
 
 	encmode.latch_x_act = true;
